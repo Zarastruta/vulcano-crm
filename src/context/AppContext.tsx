@@ -154,8 +154,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     successMsg: string,
     refetch: () => Promise<void>
   ): Promise<string | false> => {
+    if (!user) {
+      toast.error("Sessão expirada. Faça login novamente.");
+      return false;
+    }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const enrichedPayload = { ...(payload as any), user_id: user!.id };
+    const enrichedPayload = { ...(payload as any), user_id: user.id };
     const { data, error } = await supabase
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .from(table as any)
@@ -163,23 +167,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .insert([enrichedPayload as any])
       .select("id")
       .single();
-    if (error) { 
-      toast.error(error.message); 
+    if (error) {
+      toast.error(error.message);
       return false;
     }
-    toast.success(successMsg); 
-    refetch(); 
+    toast.success(successMsg);
+    refetch();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return (data as any)?.id; 
+    return (data as any)?.id;
   };
 
   const handleUpdate = async <T extends TableName>(
-    table: T, 
-    id: string, 
-    payload: ExtendedDatabase["public"]["Tables"][T]["Update"], 
-    successMsg: string, 
+    table: T,
+    id: string,
+    payload: ExtendedDatabase["public"]["Tables"][T]["Update"],
+    successMsg: string,
     refetch: () => Promise<void>
   ): Promise<boolean> => {
+    if (!user) { toast.error("Sessão expirada. Faça login novamente."); return false; }
     const { error } = await supabase
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .from(table as any)
@@ -191,6 +196,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const handleDelete = async (table: TableName, id: string, successMsg: string, refetch: () => Promise<void>): Promise<boolean> => {
+    if (!user) { toast.error("Sessão expirada. Faça login novamente."); return false; }
     const { error } = await supabase
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .from(table as any)

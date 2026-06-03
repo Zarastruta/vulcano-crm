@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useApp } from "@/context/AppContext";
+import { toast } from "sonner";
 import { Cliente } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,6 +56,9 @@ export function ContatoModal({ open, onClose, contato }: Props) {
         success = !!id;
       }
       if (success) onClose();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Erro inesperado ao salvar.";
+      toast.error(msg);
     } finally {
       setIsSaving(false);
     }

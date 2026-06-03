@@ -175,7 +175,7 @@ export default function CatalogoServicos() {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const payload = {
       nome: form.nome, unidade_padrao: form.unidade_padrao,
@@ -191,9 +191,14 @@ export default function CatalogoServicos() {
       dificuldade: (form.dificuldade || null) as NivelDificuldade | null,
       tempo_medio: form.tempo_medio || null, equipe_necessaria: form.equipe_necessaria || null,
     };
-    if (editingItem) updateCatalogoServico(editingItem.id, payload);
-    else addCatalogoServico(payload);
-    setModalOpen(false);
+    let success = false;
+    if (editingItem) {
+      success = await updateCatalogoServico(editingItem.id, payload);
+    } else {
+      const id = await addCatalogoServico(payload);
+      success = !!id;
+    }
+    if (success) setModalOpen(false);
   };
 
   const toggleCat = (cat: string) =>

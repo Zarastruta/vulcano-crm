@@ -44,23 +44,30 @@ export function mapLocal(row: CondominioRow): Local {
 
 export function mapTrabalho(row: TrabalhoRow): Trabalho {
   return {
-    id: row.id, 
-    titulo: row.titulo, 
-    descricao: row.descricao, 
+    id: row.id,
+    codigo: row.codigo ?? "",
+    titulo: row.titulo,
+    descricao: row.descricao,
     data: row.data,
-    valor: Number(row.valor), 
+    prazo: row.prazo ?? null,
+    valor: Number(row.valor),
     status_pagamento: (row.status_pagamento === "pago" ? "pago" : "nao_pago") as StatusPagamento,
-    status_obra: (row.status_obra ?? "aguardando") as StatusObra,
-    nota_fiscal: row.nota_fiscal, 
+    status_pagamento_detalhado: (row.status_pagamento_detalhado ?? "pendente") as Trabalho["status_pagamento_detalhado"],
+    valor_pago: Number(row.valor_pago ?? 0),
+    status_obra: (row.status_obra ?? "Novo") as StatusObra,
+    prioridade: (row.prioridade ?? "Média") as Trabalho["prioridade"],
+    compras_pendentes: row.compras_pendentes ?? false,
+    responsavel_id: row.responsavel_id ?? null,
+    nota_fiscal: row.nota_fiscal,
     nota_fiscal_data: row.nota_fiscal_data,
-    nota_fiscal_hora: row.nota_fiscal_hora, 
+    nota_fiscal_hora: row.nota_fiscal_hora,
     data_pagamento: row.data_pagamento,
     nota_fiscal_foto_path: row.nota_fiscal_foto_path ?? "",
-    condominioId: row.condominio_id, 
-    clienteId: row.cliente_id, 
+    condominioId: row.condominio_id,
+    clienteId: row.cliente_id,
     sindicoId: row.sindico_id,
-    endereco_obra: row.endereco_obra, 
-    observacoes: row.observacoes, 
+    endereco_obra: row.endereco_obra,
+    observacoes: row.observacoes,
     conclusao_percentual: Number(row.conclusao_percentual ?? 0),
     etapa_atual: row.etapa_atual ?? "",
     custo_estimado: Number(row.custo_estimado ?? 0),
@@ -117,42 +124,28 @@ export function mapFerramenta(row: FerramentaRow): Ferramenta {
   };
 }
 
-interface RawCatalogoServicoRow extends CatalogoServicoRow {
-  custo_material?: number;
-  custo_mao_obra?: number;
-  custo_deslocamento?: number;
-  custo_extras?: number;
-  margem_desejada?: number;
-  tipo_servico?: string;
-  dificuldade?: string;
-  tempo_medio?: string;
-  equipe_necessaria?: string;
-}
-
 export function mapCatalogoServico(row: CatalogoServicoRow): CatalogoServico {
-  const r = row as RawCatalogoServicoRow;
   return {
-    id: r.id,
-    nome: r.nome,
-    unidade_padrao: r.unidade_padrao,
-    valor_base_sugerido: Number(r.valor_base_sugerido),
-    custo_padrao: Number(r.custo_padrao),
-    // Custo granular (com fallback seguro)
-    custo_material:     Number(r.custo_material ?? 0),
-    custo_mao_obra:     Number(r.custo_mao_obra ?? 0),
-    custo_deslocamento: Number(r.custo_deslocamento ?? 0),
-    custo_extras:       Number(r.custo_extras ?? 0),
-    margem_desejada:    Number(r.margem_desejada ?? 35),
-    // Classificação
-    prestador_padrao_id: r.prestador_padrao_id,
-    categoria:    r.categoria ?? null,
-    subcategoria: r.subcategoria ?? null,
-    // Metadados operacionais
-    tipo_servico:      (r.tipo_servico ?? null) as CatalogoServico["tipo_servico"],
-    dificuldade:       (r.dificuldade ?? null) as CatalogoServico["dificuldade"],
-    tempo_medio:       r.tempo_medio ?? null,
-    equipe_necessaria: r.equipe_necessaria ?? null,
-    criado_em: r.criado_em,
+    id: row.id,
+    nome: row.nome,
+    unidade_padrao: row.unidade_padrao,
+    valor_base_sugerido: Number(row.valor_base_sugerido),
+    custo_padrao: Number(row.custo_padrao),
+    custo_material:     Number(row.custo_material ?? 0),
+    custo_mao_obra:     Number(row.custo_mao_obra ?? 0),
+    custo_deslocamento: Number(row.custo_deslocamento ?? 0),
+    custo_galvanizacao: Number(row.custo_galvanizacao ?? 0),
+    custo_pintura:      Number(row.custo_pintura ?? 0),
+    custo_corte_dobra:  Number(row.custo_corte_dobra ?? 0),
+    margem_desejada:    Number(row.margem_desejada ?? 35),
+    prestador_padrao_id: row.prestador_padrao_id,
+    categoria:    row.categoria ?? null,
+    subcategoria: row.subcategoria ?? null,
+    tipo_servico:      (row.tipo_servico ?? null) as CatalogoServico["tipo_servico"],
+    dificuldade:       (row.dificuldade ?? null) as CatalogoServico["dificuldade"],
+    tempo_medio:       row.tempo_medio ?? null,
+    equipe_necessaria: row.equipe_necessaria ?? null,
+    criado_em: row.criado_em,
   };
 }
 
