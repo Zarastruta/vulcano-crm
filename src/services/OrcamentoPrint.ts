@@ -227,10 +227,7 @@ export function printOrcamento(
   local?: Local,
   ocultarUnitarios = false,
 ) {
-  const html = buildOrcamentoHtml(orcamento, items, cliente, local, ocultarUnitarios).replace(
-    "</body></html>",
-    `<script>window.onload=function(){setTimeout(function(){window.focus();window.print();},300);};</script></body></html>`,
-  );
+  const html = buildOrcamentoHtml(orcamento, items, cliente, local, ocultarUnitarios);
   const w = window.open("", "_blank", "width=900,height=1000");
   if (!w) {
     throw new Error("Não foi possível abrir a janela de impressão. Permita pop-ups para este site.");
@@ -238,4 +235,8 @@ export function printOrcamento(
   w.document.open();
   w.document.write(html);
   w.document.close();
+  // Dispara a impressão só depois do conteúdo (logo/SVGs) montar.
+  const trigger = () => { try { w.focus(); w.print(); } catch { /* usuário pode imprimir manualmente */ } };
+  if (w.document.readyState === "complete") setTimeout(trigger, 500);
+  else w.addEventListener("load", () => setTimeout(trigger, 500));
 }

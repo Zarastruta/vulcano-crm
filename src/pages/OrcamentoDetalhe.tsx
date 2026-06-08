@@ -60,10 +60,18 @@ export default function OrcamentoDetalhe() {
 
   const totalVenda = items.reduce((acc, it) => acc + (it.valor_unitario * it.quantidade), 0);
 
-  const handleExportPdf = () => {
+  const handleExportPdf = async () => {
     try {
       toast.info("Abrindo documento Vulcano para impressão / PDF...");
-      printOrcamento(orcamento, items, cliente, cond, ocultarUnitarios);
+      // Busca os itens frescos do banco no momento da geração — evita
+      // documento sem itens caso o estado ainda não tenha carregado.
+      let itensDoc = items;
+      const { data } = await supabase
+        .from("orcamento_itens").select("*")
+        .eq("orcamento_id", orcamento.id)
+        .order("criado_em", { ascending: true });
+      if (data && data.length) itensDoc = data as unknown as OrcamentoItem[];
+      printOrcamento(orcamento, itensDoc, cliente, cond, ocultarUnitarios);
       toast.success("Use 'Salvar como PDF' no diálogo de impressão.");
     } catch (error) {
       console.error(error);
