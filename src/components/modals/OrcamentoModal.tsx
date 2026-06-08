@@ -409,8 +409,13 @@ export function OrcamentoModal({ open, onClose, orcamento, initialClienteId, ini
         if (delError) throw new Error("Falha ao limpar itens: " + delError.message);
 
         if (items.length > 0) {
+          // RLS de orcamento_itens exige user_id = auth.uid() — sem isso a
+          // inserção é rejeitada e os itens não aparecem no orçamento.
+          const { data: authData } = await supabase.auth.getUser();
+          const authUserId = authData.user?.id;
           const insertPayload = items.map(it => ({
             orcamento_id: savedOrcID as string,
+            user_id: authUserId,
             servico_id: it.servico_id ?? null,
             nome: it.nome,
             unidade: it.unidade,
