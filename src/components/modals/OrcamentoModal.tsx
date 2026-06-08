@@ -53,8 +53,38 @@ const UNIDADES_COMUNS = [
   { value: "pt", label: "pt — Ponto" },
 ];
 
+// ── Especificações técnicas (padrão Vulcano / template de orçamento) ──
+const MATERIAIS = [
+  "Aço Carbono", "Aço Galvanizado a Fogo", "Aço Inox 304", "Aço Inox 316",
+  "Ferro Forjado", "Alumínio", "Misto (Aço + Alumínio)",
+];
+const ACABAMENTOS = [
+  "Pintura Eletrostática", "Pintura Epóxi", "Zarcão + Esmalte Sintético",
+  "Galvanizado a Fogo", "Polido", "Sem acabamento (em bruto)",
+];
+const ICONES_ITEM: { value: string; label: string }[] = [
+  { value: "gate", label: "🚧 Portão" },
+  { value: "grade", label: "⬛ Grade" },
+  { value: "stairs", label: "🪜 Escada" },
+  { value: "cover", label: "🔲 Tampa / Alçapão" },
+  { value: "rail", label: "➿ Corrimão" },
+  { value: "struct", label: "🏗️ Estrutura" },
+  { value: "window", label: "🪟 Janela / Esquadria" },
+  { value: "other", label: "🔩 Outro" },
+];
+
 const TAB_ORDER = ["dados", "servicos", "prazos", "clausulas", "revisao"] as const;
 type TabKey = typeof TAB_ORDER[number];
+
+// Detecta (uma vez) se a migration de campos ricos já foi aplicada no banco.
+// Mantém o app funcionando antes E depois de rodar a migration.
+let _richColsAvailable: boolean | null = null;
+async function detectRichCols(): Promise<boolean> {
+  if (_richColsAvailable !== null) return _richColsAvailable;
+  const { error } = await supabase.from("orcamento_itens").select("largura_mm").limit(1);
+  _richColsAvailable = !error;
+  return _richColsAvailable;
+}
 
 const statusOptions: { value: StatusOrcamento; label: string }[] = [
   { value: "rascunho", label: "Rascunho" },
@@ -104,6 +134,9 @@ export function OrcamentoModal({ open, onClose, orcamento, initialClienteId, ini
     ca_transporte: 0,
     ca_outros: 0,
     margem_lucro: 0,
+    // Ajustes do documento (padrão Vulcano)
+    desconto_pct: 0,
+    imposto_pct: 0,
   });
 
   const [items, setItems] = useState<Partial<OrcamentoItem>[]>([]);
@@ -143,6 +176,8 @@ export function OrcamentoModal({ open, onClose, orcamento, initialClienteId, ini
           exclusoes: orcamento.exclusoes || "",
           responsabilidades: orcamento.responsabilidades || "",
           ca_mao_obra: 0, ca_galvanizacao: 0, ca_pintura: 0, ca_transporte: 0, ca_outros: 0, margem_lucro: 0,
+          desconto_pct: orcamento.desconto_pct ?? 0,
+          imposto_pct: orcamento.imposto_pct ?? 0,
         });
         fetchItems(orcamento.id);
       } else {
@@ -166,6 +201,7 @@ export function OrcamentoModal({ open, onClose, orcamento, initialClienteId, ini
           exclusoes: DEFAULT_EXCLUSOES,
           responsabilidades: DEFAULT_RESPONSABILIDADES,
           ca_mao_obra: 0, ca_galvanizacao: 0, ca_pintura: 0, ca_transporte: 0, ca_outros: 0, margem_lucro: 0,
+          desconto_pct: 0, imposto_pct: 0,
         });
         setItems(initialDraft?.items ?? []);
         // Se tem draft com clienteId, auto-vai para Passo 2 para o usuário ver os itens
@@ -248,7 +284,8 @@ export function OrcamentoModal({ open, onClose, orcamento, initialClienteId, ini
   const addAvulsoItem = () => {
     setItems(prev => [
       ...prev,
-      { id: crypto.randomUUID(), servico_id: null, nome: "", unidade: "un", quantidade: 1, valor_unitario: 0, custo_unitario: 0, funcionario_id: null },
+      { id: crypto.randomUUID(), servico_id: null, nome: "", unidade: "un", quantidade: 1, valor_unitario: 0, custo_unitario: 0, funcionario_id: null,
+        largura_mm: null, altura_mm: null, material: "", acabamento: "", cor: "", observacao: "", icone: "other" },
     ]);
   };
 
@@ -271,18 +308,26 @@ export function OrcamentoModal({ open, onClose, orcamento, initialClienteId, ini
 
   const somaCustosAdicionais =
     form.ca_mao_obra + form.ca_galvanizacao + form.ca_pintura + form.ca_transporte + form.ca_outros;
+
+  // ── Modelo do documento (padrão Vulcano): subtotal itens → desconto% → imposto% ──
+  const descontoValor = totalItens * (form.desconto_pct || 0) / 100;
+  const baseImposto = totalItens - descontoValor;
+  const impostoValor = baseImposto * (form.imposto_pct || 0) / 100;
+  const valorCliente = baseImposto + impostoValor;
+
+  // ── Estimativa interna (custos adicionais + margem) — apenas informativa ──
   const subtotal = totalItens + somaCustosAdicionais;
   const valorFinal = form.margem_lucro > 0 && form.margem_lucro < 100
     ? subtotal / (1 - form.margem_lucro / 100)
     : subtotal;
 
-  const lucro = valorFinal - totalCusto - somaCustosAdicionais;
-  const margemPercentual = valorFinal > 0 ? (lucro / valorFinal) * 100 : 0;
+  const lucro = valorCliente - totalCusto - somaCustosAdicionais;
+  const margemPercentual = valorCliente > 0 ? (lucro / valorCliente) * 100 : 0;
 
-  // Auto-sync valor com valorFinal
+  // Auto-sync valor (o que o cliente paga) com o total do documento
   useEffect(() => {
-    setForm(prev => ({ ...prev, valor: parseFloat(valorFinal.toFixed(2)) }));
-  }, [valorFinal]);
+    setForm(prev => ({ ...prev, valor: parseFloat(valorCliente.toFixed(2)) }));
+  }, [valorCliente]);
 
   // ─── Submit ───────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
@@ -320,6 +365,11 @@ export function OrcamentoModal({ open, onClose, orcamento, initialClienteId, ini
     }
     setIsSaving(true);
 
+    const richCols = await detectRichCols();
+    if (!richCols) {
+      toast.warning("Campos técnicos/desconto ainda não estão no banco. Rode a migration para salvá-los.", { duration: 6000 });
+    }
+
     const payload = {
       numero: orcamento?.numero || 0,
       titulo: form.titulo,
@@ -341,6 +391,7 @@ export function OrcamentoModal({ open, onClose, orcamento, initialClienteId, ini
       data_prevista_inicio: form.data_prevista_inicio ? format(form.data_prevista_inicio, "yyyy-MM-dd") : null,
       exclusoes: form.exclusoes,
       responsabilidades: form.responsabilidades,
+      ...(richCols ? { desconto_pct: form.desconto_pct, imposto_pct: form.imposto_pct } : {}),
     };
 
     let savedOrcID = orcamento?.id;
@@ -367,8 +418,19 @@ export function OrcamentoModal({ open, onClose, orcamento, initialClienteId, ini
             valor_unitario: it.valor_unitario,
             custo_unitario: it.custo_unitario,
             funcionario_id: it.funcionario_id ?? null,
+            // Especificações técnicas (padrão Vulcano) — só quando a migration já rodou
+            ...(richCols ? {
+              largura_mm: it.largura_mm ?? null,
+              altura_mm: it.altura_mm ?? null,
+              material: it.material ?? "",
+              acabamento: it.acabamento ?? "",
+              cor: it.cor ?? "",
+              observacao: it.observacao ?? "",
+              icone: it.icone ?? "other",
+            } : {}),
           }));
-          const { error: insError } = await supabase.from("orcamento_itens").insert(insertPayload);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { error: insError } = await supabase.from("orcamento_itens").insert(insertPayload as any);
           if (insError) throw new Error("Falha ao salvar itens: " + insError.message);
         }
       }
@@ -817,6 +879,72 @@ export function OrcamentoModal({ open, onClose, orcamento, initialClienteId, ini
                                 )}
                               </div>
                             </details>
+
+                            {/* Especificações técnicas (aparecem no orçamento Vulcano) */}
+                            <details className="group">
+                              <summary className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-barlow cursor-pointer list-none py-1 select-none">
+                                <ChevronRight className="h-3 w-3 group-open:rotate-90 transition-transform" />
+                                Especificações técnicas (orçamento)
+                              </summary>
+                              <div className="pt-2 grid grid-cols-2 gap-2">
+                                <div className="col-span-2 space-y-1">
+                                  <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 font-barlow">Esquema / Tipo</p>
+                                  <select
+                                    value={it.icone || "other"}
+                                    onChange={(e) => updateItem(idx, "icone", e.target.value)}
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-2 text-xs font-barlow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                  >
+                                    {ICONES_ITEM.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                  </select>
+                                </div>
+                                <div className="space-y-1">
+                                  <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 font-barlow">Largura (mm)</p>
+                                  <Input type="number" min={0} value={it.largura_mm ?? ""} placeholder="ex: 4620"
+                                    onChange={(e) => updateItem(idx, "largura_mm", e.target.value === "" ? null : Number(e.target.value))}
+                                    className="h-10 font-barlow" />
+                                </div>
+                                <div className="space-y-1">
+                                  <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 font-barlow">Altura (mm)</p>
+                                  <Input type="number" min={0} value={it.altura_mm ?? ""} placeholder="ex: 2460"
+                                    onChange={(e) => updateItem(idx, "altura_mm", e.target.value === "" ? null : Number(e.target.value))}
+                                    className="h-10 font-barlow" />
+                                </div>
+                                <div className="space-y-1">
+                                  <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 font-barlow">Material</p>
+                                  <select
+                                    value={it.material || ""}
+                                    onChange={(e) => updateItem(idx, "material", e.target.value)}
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-2 text-xs font-barlow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                  >
+                                    <option value="">— Selecione —</option>
+                                    {MATERIAIS.map(m => <option key={m} value={m}>{m}</option>)}
+                                  </select>
+                                </div>
+                                <div className="space-y-1">
+                                  <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 font-barlow">Acabamento</p>
+                                  <select
+                                    value={it.acabamento || ""}
+                                    onChange={(e) => updateItem(idx, "acabamento", e.target.value)}
+                                    className="flex h-10 w-full rounded-md border border-input bg-background px-2 text-xs font-barlow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                  >
+                                    <option value="">— Selecione —</option>
+                                    {ACABAMENTOS.map(a => <option key={a} value={a}>{a}</option>)}
+                                  </select>
+                                </div>
+                                <div className="space-y-1">
+                                  <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 font-barlow">Cor</p>
+                                  <Input value={it.cor || ""} placeholder="Ex: Preto Fosco / RAL 9005"
+                                    onChange={(e) => updateItem(idx, "cor", e.target.value)}
+                                    className="h-10 font-barlow" />
+                                </div>
+                                <div className="col-span-2 space-y-1">
+                                  <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 font-barlow">Observação do item</p>
+                                  <Input value={it.observacao || ""} placeholder="Ex: Inclui instalação, dobradiças e cadeado"
+                                    onChange={(e) => updateItem(idx, "observacao", e.target.value)}
+                                    className="h-10 font-barlow" />
+                                </div>
+                              </div>
+                            </details>
                           </div>
                         </div>
                       );
@@ -880,6 +1008,56 @@ export function OrcamentoModal({ open, onClose, orcamento, initialClienteId, ini
                   </div>
                 </div>
 
+                {/* Desconto e Impostos (aparecem no documento do cliente) */}
+                <div className="rounded-xl border border-border bg-muted/20 overflow-hidden">
+                  <div className="px-4 py-3 bg-muted/40 border-b border-border">
+                    <p className="text-[10px] font-bold font-oswald uppercase tracking-widest text-muted-foreground">Desconto e Impostos</p>
+                    <p className="text-[10px] text-muted-foreground font-barlow">Aplicados sobre o subtotal dos itens — aparecem no orçamento do cliente.</p>
+                  </div>
+                  <div className="p-4 space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground font-barlow">Desconto (%)</p>
+                        <input
+                          type="number" min={0} max={100} step={0.5}
+                          value={form.desconto_pct}
+                          onChange={(e) => setForm(prev => ({ ...prev, desconto_pct: Number(e.target.value) }))}
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-oswald font-bold text-center ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground font-barlow">Impostos / Taxas (%)</p>
+                        <input
+                          type="number" min={0} max={100} step={0.5}
+                          value={form.imposto_pct}
+                          onChange={(e) => setForm(prev => ({ ...prev, imposto_pct: Number(e.target.value) }))}
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-oswald font-bold text-center ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        />
+                      </div>
+                    </div>
+                    {items.length > 0 && (
+                      <div className="mt-2 bg-card rounded-lg border border-border p-3 space-y-1.5 text-xs font-barlow">
+                        <div className="flex justify-between text-muted-foreground">
+                          <span>Subtotal</span><span className="font-bold">{fmt(totalItens)}</span>
+                        </div>
+                        {form.desconto_pct > 0 && (
+                          <div className="flex justify-between text-emerald-600">
+                            <span>Desconto ({form.desconto_pct}%)</span><span className="font-bold">- {fmt(descontoValor)}</span>
+                          </div>
+                        )}
+                        {form.imposto_pct > 0 && (
+                          <div className="flex justify-between text-muted-foreground">
+                            <span>Impostos / Taxas ({form.imposto_pct}%)</span><span className="font-bold">{fmt(impostoValor)}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between text-primary font-bold border-t border-border pt-1.5 text-sm">
+                          <span>Total do orçamento</span><span>{fmt(valorCliente)}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 {/* Totais consolidados */}
                 {items.length > 0 && (
                   <div className="grid grid-cols-3 gap-3 px-4 py-4 bg-muted/20 rounded-2xl border border-border/50 mt-2">
@@ -888,8 +1066,8 @@ export function OrcamentoModal({ open, onClose, orcamento, initialClienteId, ini
                       <p className="font-oswald text-lg font-bold text-destructive/70">{fmt(totalCusto)}</p>
                     </div>
                     <div className="space-y-0.5 text-center border-x border-border/50">
-                      <p className="text-[9px] uppercase tracking-[0.2em] text-emerald-700 font-bold font-barlow">Valor Final</p>
-                      <p className="font-oswald text-lg font-bold text-emerald-600">{fmt(valorFinal)}</p>
+                      <p className="text-[9px] uppercase tracking-[0.2em] text-emerald-700 font-bold font-barlow">Total Cliente</p>
+                      <p className="font-oswald text-lg font-bold text-emerald-600">{fmt(valorCliente)}</p>
                     </div>
                     <div className="space-y-0.5 text-center">
                       <p className="text-[9px] uppercase tracking-[0.2em] text-primary font-bold font-barlow">

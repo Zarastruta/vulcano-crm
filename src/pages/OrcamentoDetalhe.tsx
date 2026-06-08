@@ -10,7 +10,7 @@ import { useApp } from "@/context/AppContext";
 import { Button } from "@/components/ui/button";
 import { OrcamentoStatusBadge } from "@/components/shared/Badges";
 import { OrcamentoModal } from "@/components/modals/OrcamentoModal";
-import { generateOrcamentoPdf } from "@/services/PdfService";
+import { printOrcamento } from "@/services/OrcamentoPrint";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -62,12 +62,12 @@ export default function OrcamentoDetalhe() {
 
   const handleExportPdf = () => {
     try {
-      toast.info("Gerando documento Vulcano...");
-      generateOrcamentoPdf(orcamento, items, cliente, cond, ocultarUnitarios, sindico);
-      toast.success("PDF gerado com sucesso!");
+      toast.info("Abrindo documento Vulcano para impressão / PDF...");
+      printOrcamento(orcamento, items, cliente, cond, ocultarUnitarios);
+      toast.success("Use 'Salvar como PDF' no diálogo de impressão.");
     } catch (error) {
       console.error(error);
-      toast.error("Erro ao gerar PDF.");
+      toast.error(error instanceof Error ? error.message : "Erro ao gerar documento.");
     }
   };
 
@@ -89,13 +89,29 @@ export default function OrcamentoDetalhe() {
       // Calcula custo real a partir dos itens carregados
       const custoEstimado = items.reduce((acc, it) => acc + ((it.custo_unitario || 0) * (it.quantidade || 1)), 0);
 
+      // Gera código OS sequencial (ex: OS-2026-001) com fallback
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      let codigo = `OS-${Date.now()}`;
+      if (authUser) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: codeData } = await (supabase as any).rpc("next_os_code", { p_user_id: authUser.id });
+        codigo = (codeData as string | null) ?? codigo;
+      }
+
       const novoTrabalhoId = await addTrabalho({
         titulo: orcamento.titulo,
         descricao: orcamento.descricao,
         data: new Date().toISOString().split("T")[0],
         valor: orcamento.valor,
         status_pagamento: "nao_pago",
-        status_obra: "aguardando",
+        status_obra: "Novo",
+        codigo,
+        prioridade: "Média",
+        prazo: null,
+        responsavel_id: null,
+        status_pagamento_detalhado: "pendente",
+        valor_pago: 0,
+        compras_pendentes: false,
         nota_fiscal: "",
         nota_fiscal_data: null,
         nota_fiscal_hora: null,
