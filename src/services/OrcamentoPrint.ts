@@ -3,8 +3,15 @@
 // Abre uma janela de impressão idêntica ao padrão e dispara o print do navegador
 // (use "Salvar como PDF" no diálogo de impressão).
 // ════════════════════════════════════════════════════════════════════
-import { formatDate } from "@/lib/utils";
-import { Orcamento, Cliente, Local, OrcamentoItem } from "@/types";
+import type { Orcamento, Cliente, Local, OrcamentoItem } from "@/types";
+
+// Formata data ISO (YYYY-MM-DD) para pt-BR sem depender de libs externas
+function formatDate(v?: string | null): string {
+  if (!v) return "—";
+  const d = new Date(v.length <= 10 ? v + "T12:00:00" : v);
+  if (isNaN(d.getTime())) return String(v);
+  return d.toLocaleDateString("pt-BR");
+}
 
 const EMPRESA = {
   nome: "Vulcano Metalúrgica Arquitetônica",
@@ -104,13 +111,14 @@ body{font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.4;color
 @media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}@page{margin:8mm;size:A4}body{background:#fff;padding:0}.doc{width:100%;border:2px solid #000}}
 `;
 
-export function printOrcamento(
+/** Monta o documento HTML completo do orçamento (testável, sem efeitos colaterais). */
+export function buildOrcamentoHtml(
   orcamento: Orcamento,
   items: OrcamentoItem[],
   cliente?: Cliente,
   local?: Local,
   ocultarUnitarios = false,
-) {
+): string {
   const num = String(orcamento.numero || 0).padStart(3, "0");
   const dataEmissao = orcamento.data_emissao ? formatDate(orcamento.data_emissao) : "—";
 
@@ -206,9 +214,23 @@ export function printOrcamento(
     </div>
     <div class="doc-rodape"><div class="rodape-marca"><span>VULCANO</span> — Metalurgia Arquitetônica</div><div class="rodape-marca">Orçamento #${num} — ${dataEmissao}</div></div>
   </div>
-  <script>window.onload=function(){setTimeout(function(){window.focus();window.print();},300);};</script>
   </body></html>`;
 
+  return html;
+}
+
+/** Abre o orçamento numa janela e dispara o diálogo de impressão (Salvar como PDF). */
+export function printOrcamento(
+  orcamento: Orcamento,
+  items: OrcamentoItem[],
+  cliente?: Cliente,
+  local?: Local,
+  ocultarUnitarios = false,
+) {
+  const html = buildOrcamentoHtml(orcamento, items, cliente, local, ocultarUnitarios).replace(
+    "</body></html>",
+    `<script>window.onload=function(){setTimeout(function(){window.focus();window.print();},300);};</script></body></html>`,
+  );
   const w = window.open("", "_blank", "width=900,height=1000");
   if (!w) {
     throw new Error("Não foi possível abrir a janela de impressão. Permita pop-ups para este site.");
