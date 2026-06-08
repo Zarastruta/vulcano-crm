@@ -345,7 +345,7 @@ export default function ControleDiario() {
                 <SelectContent>
                   <SelectItem value="__nenhuma__">-- Sem obra vinculada --</SelectItem>
                   {trabalhos
-                    .filter((t) => t.status_obra === "em_andamento" || t.status_obra === "aguardando")
+                    .filter((t) => t.status_obra !== "Finalizado")
                     .map((t) => (
                       <SelectItem key={t.id} value={t.id}>{t.titulo}</SelectItem>
                     ))}

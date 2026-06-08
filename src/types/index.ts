@@ -85,6 +85,9 @@ export interface Orcamento {
   data_prevista_inicio?: string | null;
   exclusoes?: string;
   responsabilidades?: string;
+  /** Ajustes financeiros do documento (padrão Vulcano) */
+  desconto_pct?: number;
+  imposto_pct?: number;
   condominioId: string | null;
   clienteId: string | null;
   sindicoId: string | null;
@@ -143,6 +146,11 @@ export interface PontoDiario {
   criado_em: string;
 }
 
+/** Ícones/esquemas técnicos do template de orçamento Vulcano */
+export type IconeItem =
+  | "gate" | "grade" | "stairs" | "cover"
+  | "rail" | "struct" | "window" | "other";
+
 export interface OrcamentoItem {
   id: string;
   orcamento_id: string;
@@ -154,6 +162,14 @@ export interface OrcamentoItem {
   custo_unitario: number;
   funcionario_id: string | null;
   criado_em: string;
+  // Especificações técnicas (padrão Vulcano) — opcionais
+  largura_mm?: number | null;
+  altura_mm?: number | null;
+  material?: string;
+  acabamento?: string;
+  cor?: string;
+  observacao?: string;
+  icone?: IconeItem;
 }
 
 /** Dados pré-preenchidos vindos do parser de WhatsApp */

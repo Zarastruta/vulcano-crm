@@ -91,7 +91,11 @@ export function mapOrcamento(row: OrcamentoRow): Orcamento {
     data_prevista_inicio: row.data_prevista_inicio,
     exclusoes: row.exclusoes ?? "",
     responsabilidades: row.responsabilidades ?? "",
-    condominioId: row.condominio_id, 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    desconto_pct: Number((row as any).desconto_pct ?? 0),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    imposto_pct: Number((row as any).imposto_pct ?? 0),
+    condominioId: row.condominio_id,
     clienteId: row.cliente_id, 
     sindicoId: row.sindico_id,
     endereco_obra: row.endereco_obra, 
@@ -176,6 +180,20 @@ export function mapOrcamentoItem(row: OrcamentoItemRow): OrcamentoItem {
     custo_unitario: Number(row.custo_unitario),
     funcionario_id: row.funcionario_id,
     criado_em: row.criado_em,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    largura_mm: (row as any).largura_mm ?? null,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    altura_mm: (row as any).altura_mm ?? null,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    material: (row as any).material ?? "",
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    acabamento: (row as any).acabamento ?? "",
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    cor: (row as any).cor ?? "",
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    observacao: (row as any).observacao ?? "",
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    icone: ((row as any).icone ?? "other") as OrcamentoItem["icone"],
   };
 }
 

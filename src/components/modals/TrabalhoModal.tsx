@@ -143,7 +143,8 @@ export function TrabalhoModal({ open, onClose, trabalho, defaultCondominioId }: 
       // 7.2 — Gerar código OS automático na criação
       let codigo = trabalho?.codigo ?? "";
       if (!isEdit && user) {
-        const { data: codeData } = await supabase.rpc("next_os_code", { p_user_id: user.id });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: codeData } = await (supabase as any).rpc("next_os_code", { p_user_id: user.id });
         codigo = (codeData as string | null) ?? `OS-${Date.now()}`;
       }
 

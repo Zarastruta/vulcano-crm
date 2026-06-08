@@ -176,6 +176,9 @@ CREATE TABLE IF NOT EXISTS orcamentos (
   data_prevista_inicio  DATE,
   exclusoes             TEXT NOT NULL DEFAULT '',
   responsabilidades     TEXT NOT NULL DEFAULT '',
+  -- Ajustes financeiros do documento (padrão Vulcano)
+  desconto_pct          NUMERIC(5,2) NOT NULL DEFAULT 0,
+  imposto_pct           NUMERIC(5,2) NOT NULL DEFAULT 0,
   -- Localização e responsáveis
   condominio_id         UUID REFERENCES condominios(id) ON DELETE SET NULL,
   cliente_id            UUID REFERENCES clientes(id) ON DELETE SET NULL,
@@ -216,6 +219,14 @@ CREATE TABLE IF NOT EXISTS orcamento_itens (
   custo_unitario NUMERIC(12,2) NOT NULL DEFAULT 0,
   funcionario_id UUID REFERENCES funcionarios(id) ON DELETE SET NULL,
   user_id        UUID REFERENCES auth.users(id),
+  -- Especificações técnicas (padrão Vulcano)
+  largura_mm     INTEGER,
+  altura_mm      INTEGER,
+  material       TEXT NOT NULL DEFAULT '',
+  acabamento     TEXT NOT NULL DEFAULT '',
+  cor            TEXT NOT NULL DEFAULT '',
+  observacao     TEXT NOT NULL DEFAULT '',
+  icone          TEXT NOT NULL DEFAULT 'other',
   criado_em      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
