@@ -18,6 +18,7 @@ export interface Cliente {
   telefone: string;
   email: string;
   observacoes: string;
+  responsavel_id?: string | null;
   criadoEm: string;
 }
 

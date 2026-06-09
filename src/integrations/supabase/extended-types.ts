@@ -22,14 +22,17 @@ export type ExtendedDatabase = Database & {
       clientes: {
         Row: Database["public"]["Tables"]["clientes"]["Row"] & {
           cpf_cnpj: string | null;
+          responsavel_id: string | null;
           user_id: string | null;
         };
         Insert: Database["public"]["Tables"]["clientes"]["Insert"] & {
           cpf_cnpj?: string | null;
+          responsavel_id?: string | null;
           user_id?: string | null;
         };
         Update: Database["public"]["Tables"]["clientes"]["Update"] & {
           cpf_cnpj?: string | null;
+          responsavel_id?: string | null;
           user_id?: string | null;
         };
         Relationships: Database["public"]["Tables"]["clientes"]["Relationships"];

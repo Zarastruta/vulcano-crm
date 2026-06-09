@@ -1,7 +1,7 @@
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Pencil, Trash2, Phone, Mail, Wrench, Building2, DollarSign } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, Phone, Mail, Wrench, Building2, DollarSign, UserCircle } from "lucide-react";
 import { useApp } from "@/context/AppContext";
 import { Button } from "@/components/ui/button";
 import { TipoContatoBadge, PagamentoBadge } from "@/components/shared/Badges";
@@ -12,7 +12,7 @@ import { ContatoModal } from "@/components/modals/ContatoModal";
 export default function ContatoDetalhe() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { clientes: contatos, locais, trabalhos, orcamentos, deleteCliente: deleteContato } = useApp();
+  const { clientes: contatos, locais, trabalhos, orcamentos, funcionarios, deleteCliente: deleteContato } = useApp();
   const [editOpen, setEditOpen] = useState(false);
   const [orcamentoOpen, setOrcamentoOpen] = useState(false);
 
@@ -78,6 +78,15 @@ export default function ContatoDetalhe() {
             <div>
               <p className="text-xs text-muted-foreground">CPF/CNPJ</p>
               <p className="text-sm">{contato.cpf_cnpj}</p>
+            </div>
+          )}
+          {contato.responsavel_id && (
+            <div className="flex items-center gap-2 text-sm">
+              <UserCircle className="h-4 w-4 text-muted-foreground" />
+              <span>
+                <span className="text-muted-foreground">Responsável: </span>
+                {funcionarios.find((f) => f.id === contato.responsavel_id)?.nome ?? "—"}
+              </span>
             </div>
           )}
           {contato.observacoes && (
