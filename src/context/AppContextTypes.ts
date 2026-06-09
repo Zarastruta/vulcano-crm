@@ -26,6 +26,7 @@ export function mapCliente(row: ClienteRow): Cliente {
     telefone: row.telefone || "",
     email: row.email || "",
     observacoes: row.observacoes || "",
+    responsavel_id: row.responsavel_id ?? null,
     criadoEm: row.criado_em,
   };
 }

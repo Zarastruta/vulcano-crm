@@ -20,7 +20,7 @@ interface Props {
 }
 
 export function ContatoModal({ open, onClose, contato }: Props) {
-  const { addCliente, updateCliente } = useApp();
+  const { addCliente, updateCliente, funcionarios } = useApp();
   const isEdit = !!contato;
   const [isSaving, setIsSaving] = useState(false);
   const [form, setForm] = useState({
@@ -30,6 +30,7 @@ export function ContatoModal({ open, onClose, contato }: Props) {
     telefone: "",
     email: "",
     observacoes: "",
+    responsavel_id: "",
   });
 
   useEffect(() => {
@@ -37,22 +38,27 @@ export function ContatoModal({ open, onClose, contato }: Props) {
       setForm({
         nome: contato.nome, tipo: contato.tipo, cpf_cnpj: contato.cpf_cnpj,
         telefone: contato.telefone, email: contato.email, observacoes: contato.observacoes,
+        responsavel_id: contato.responsavel_id ?? "",
       });
     } else {
-      setForm({ nome: "", tipo: "pessoa_fisica", cpf_cnpj: "", telefone: "", email: "", observacoes: "" });
+      setForm({ nome: "", tipo: "pessoa_fisica", cpf_cnpj: "", telefone: "", email: "", observacoes: "", responsavel_id: "" });
     }
   }, [contato, open]);
+
+  // Mostra membros ativos da equipe; mantém o atual mesmo se inativo.
+  const equipe = funcionarios.filter((f) => f.ativo || f.id === form.responsavel_id);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSaving) return;
     setIsSaving(true);
     try {
+      const payload = { ...form, responsavel_id: form.responsavel_id || null };
       let success = false;
       if (isEdit && contato) {
-        success = await updateCliente(contato.id, form);
+        success = await updateCliente(contato.id, payload);
       } else {
-        const id = await addCliente(form);
+        const id = await addCliente(payload);
         success = !!id;
       }
       if (success) onClose();
@@ -85,6 +91,22 @@ export function ContatoModal({ open, onClose, contato }: Props) {
                 <SelectItem value="pessoa_fisica">Pessoa Física</SelectItem>
                 <SelectItem value="empresa">Empresa</SelectItem>
                 <SelectItem value="administradora">Administradora</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Responsável</Label>
+            <Select
+              value={form.responsavel_id || "none"}
+              onValueChange={(v) => setForm({ ...form, responsavel_id: v === "none" ? "" : v })}
+            >
+              <SelectTrigger><SelectValue placeholder="Sem responsável" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">— Sem responsável —</SelectItem>
+                {equipe.map((f) => (
+                  <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
