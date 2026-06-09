@@ -17,7 +17,7 @@ const EMPRESA = {
   nome: "Vulcano Metalúrgica Arquitetônica",
   cnpj: "55.762.141/0001-33",
   email: "vulcanometalurgicagcr@hotmail.com",
-  celular: "(48) 99648-7447",
+  celular: "+55 48 99823-6934",
 };
 
 const ICONES: Record<string, string> = {
